@@ -7,6 +7,9 @@ import { Platform } from 'react-native';
 import { Card } from 'react-native-paper';
 // or any files within the Snack
 import AssetExample from './components/AssetExample';
+import JSSoup from 'jssoup';
+import axios from 'axios';
+
 // This is a simple application to load synopsi of medical conditions from various websites directly into
 // the app. The basic goal is to provide summaries of conditions, with different explanations, and to have them
 // displayed. Later, functionality may be added to load full webpages as a browser open from the app and to 
@@ -42,7 +45,8 @@ work/show within the Web app, when nested within SafeAreaProvider*/
 // Text Area inside ScrollView Information
 // https://reactnative.dev/docs/scrollview
 
-
+// JSSoup Documentation (NOTE: The need for Axios to make the URL request)
+// https://www.npmjs.com/package/jssoup
 
 var TextBody = 'Updated Info Here'; 
 export default class App extends Component {
@@ -50,7 +54,7 @@ export default class App extends Component {
   state = {
     TextBody: "Updated Info here.",
     hiddenState: false,
-    summaryInfo: "Placeholder",
+    summaryInfo: "",
 
   }
   render(){
@@ -78,16 +82,9 @@ export default class App extends Component {
     );
   }
    toggleSidenav() {
-    //this.state.TextBody = "DSFSDF"
-    this.setState({TextBody: "DSDFDS"})
+    this.setState({TextBody: "SideBarOpened"})
     this.setState({hiddenState: !this.state.hiddenState})
 
-    //if (this.state.hiddenState == false) {
-    //    document.getElementById("sidenav").style.display = "block";
-    //    document.getElementById("sidenav").setState({isHidden})
-   // } else {
-   //   document.getElementById("sidenav").style.display = "none";
-   //}
   }
 
   // Fetch an API. For initial testing, standard URL with input. Later, to take actual search input and with variable site selecting.
@@ -99,13 +96,50 @@ export default class App extends Component {
   const url = "https://www.cdc.gov/autism/signs-symptoms/index.html";
   //const url = "https://www.google.com";
 
-
+  //const axios = require('axios');
+  const JSSoup = require('jssoup').default;
 
     if (Platform.OS === 'ios' || Platform.OS === 'android') {
-      // Run iOS-specific code
+      // Run iOS and Android specific code
       
-      this.setState({summaryInfo: "iOS or Android Branch Success"});
-      console.log("Here");
+      this.setState({summaryInfo: "Loading..."});
+      console.log("Loading");
+      
+      
+      //var url = 'https://www.cdc.gov/autism/signs-symptoms/index.html';
+    
+      try {
+        // 1. Fetch the raw HTML text using axios
+        const response = await axios.get(url);
+        const htmlContent = response.data;
+
+        // 2. Parse it into a JSSoup object
+        const soup = new JSSoup(htmlContent);
+
+        // 3. Output the full HTML string
+        console.log(soup.toString());
+
+        // JSSoup gets tags "li" with class name of "level-1"
+        var content = soup.findAll("li", {class: 'level-1'});
+
+
+        var displayData = "";
+        // Iterates through returned web tags and gets the text content
+        for (var i = 0; i < content.length; i++) {
+          console.log(content[i].text)
+      
+          displayData = displayData.concat(content[i].text).concat("\n").concat("\u2022");
+           
+        }
+
+        this.setState({summaryInfo: displayData});
+        
+    } catch (error) {
+        console.error('Error fetching website:', error);
+        this.setState({TextBody: "Data couldn't be obtained succesfully."})
+        this.setState({summaryInfo: "Could not display content for this search."});
+    }
+
     }
 
     // Code to fetch information if on PC/Other Device.
@@ -146,17 +180,8 @@ export default class App extends Component {
                 console.log("length = " + data.length)
                   console.log(data[i].textContent);
                   const arrayTemp = this.state.summaryInfo;
-                  //console.log({summaryInfo});
-                  //console.table(arrayTemp);
-                  //arrayTemp.concat(["DF"])
-                  //console.log(this.getState({summaryInfo}));
 
-                  // Set at start of bullet points a bullet point in content?
-                  //if(){
-                  //  this.setState({summaryInfo: [(data[i].textContent).concat("\n")]});
-                  //}
-                  //this.setState({summaryInfo: (arrayTemp.concat(data[i].textContent).concat("\n"))});
-                  displayData = displayData.concat(data[i].textContent).concat("\u2022").concat("\n");
+                  displayData = displayData.concat(data[i].textContent).concat("\n").concat("\u2022");
               }
               this.setState({summaryInfo: displayData});
               //displayData = "";
@@ -165,19 +190,18 @@ export default class App extends Component {
 
 
       this.setState({TextBody: "HDF"})
-      
-      //this.setState({TextBody: JSON.stringify(data)})
+
     } 
     catch (error) {
       console.error("Fetch failed:", error); // Catches network errors
       this.setState({TextBody: "Data couldn't be obtained succesfully."})
+      this.setState({summaryInfo: "Could not display content for this search."});
     }
 
     }
 
 
   }
-
 
 
   /* Clears the Fetch Request Results on the Screen.*/

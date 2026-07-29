@@ -1,8 +1,8 @@
-import { ScrollView, StyleSheet, Text, View, TouchableOpacity } from 'react-native';
-import React, { Component } from 'react';
+import { ScrollView, StyleSheet, Text, View, TouchableOpacity, TextInput } from 'react-native';
+import React, { Component, useState } from 'react';
 import styled from 'styled-components/native';
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
-import { Platform } from 'react-native';
+import { Platform, Alert, Keyboard } from 'react-native';
 // You can import supported modules from npm
 import { Card } from 'react-native-paper';
 // or any files within the Snack
@@ -48,6 +48,9 @@ work/show within the Web app, when nested within SafeAreaProvider*/
 // JSSoup Documentation (NOTE: The need for Axios to make the URL request)
 // https://www.npmjs.com/package/jssoup
 
+// TextInput documentation
+// https://reactnative.dev/docs/textinput
+
 var TextBody = 'Updated Info Here'; 
 export default class App extends Component {
 
@@ -55,8 +58,28 @@ export default class App extends Component {
     TextBody: "Updated Info here.",
     hiddenState: false,
     summaryInfo: "",
+    //textInput: "",
+    //[textInput, setText] = useState('')
+    //textInput: setText
+    textInput: "meep",
+    updateInput: "tobeupdated",
+    textTitle: ""
 
   }
+  //const [text, setText] = useState('');
+  
+  // Method that is updated from the TextInput changes
+   handleText = (text) => {
+    //setName(text);
+  
+    this.setState({updateInput: text})
+  };
+
+  // This method is called when the TextInput of the GUI has the enter key pressed.
+    enterSubmit = () => {
+        this.fetch();
+    };
+
   render(){
     return(
       <SafeAreaProvider id="sidenav" style={styles.sidenav}>
@@ -70,9 +93,11 @@ export default class App extends Component {
               {this.state.hiddenState && <View><Text>Home</Text></View>}
               {this.state.hiddenState && <View><Text>Search</Text></View>}
               {this.state.hiddenState && <TouchableOpacity style={styles.dropdownButton} onPress={() => this.clearFetchRequest()}><Text>Clear Results</Text> </TouchableOpacity>}
-
+      
+      <Text style= {styles.condition}>{this.state.textTitle} </Text>
       <Text> Data fetched from cdc.gov </Text>
-      <Text>{this.state.TextBody} </Text>
+      
+      <TextInput style = {styles.textInput} id="test" value = {this.state.updateInput} onChangeText={this.handleText} onSubmitEditing={this.enterSubmit} />
       <Button onPress={() => this.fetch()}><Text>Fetch</Text> </Button>
       <SafeAreaProvider style={styles.container} edges={['top']}>
         <ScrollView style={styles.scrollView} contentInsetAdjustmentBehavior="automatic"><Text>{this.state.summaryInfo}</Text>
@@ -88,15 +113,24 @@ export default class App extends Component {
   }
 
   // Fetch an API. For initial testing, standard URL with input. Later, to take actual search input and with variable site selecting.
+  // To search for textInput that is input into the TextField
   async fetch(){
     // To find condition
   //const url = "https://tools.cdc.gov/api/v2/resources/media?q=diabetes";
   //const url = "https://jsonplaceholder.typicode.com/users/1";
   //const url = "https://tools.cdc.gov/api/v2/resources/tags/16/media";
-  const url = "https://www.cdc.gov/autism/signs-symptoms/index.html";
+  // USEFUL TESTER
+  //var url = "https://www.cdc.gov/autism/signs-symptoms/index.html";
   //const url = "https://www.google.com";
 
   //const axios = require('axios');
+
+  var textInputStringified = this.state.updateInput;
+  // replaces spaces with dashes to assist in URL fetches
+  textInputStringified = textInputStringified.replace(/\s+/g, '-');
+  console.log(textInputStringified);
+  var url = "https://www.cdc.gov/"+textInputStringified+"/signs-symptoms/index.html";
+
   const JSSoup = require('jssoup').default;
 
     if (Platform.OS === 'ios' || Platform.OS === 'android') {
@@ -166,16 +200,24 @@ export default class App extends Component {
       //   console.log(element.textContent); // Extracts text from the tag
         //  })
 
-        fetch('https://www.cdc.gov/autism/signs-symptoms/index.html')
+        textInputStringified = this.state.updateInput;
+        // replaces spaces with dashes to assist in URL fetches
+        textInputStringified = textInputStringified.replace(/\s+/g, '-');
+        console.log(textInputStringified);
+        url = "https://www.cdc.gov/"+textInputStringified+"/signs-symptoms/index.html";
+
+        fetch(url)
         .then(response => response.text())
         .then(html => {
           // Parse the HTML here
               const doc = parser.parseFromString(html, 'text/html');
               //const data = doc.getElementsByClassName('dfe-section');
               const data = doc.getElementsByClassName('level-1');
+
               // Clears Info 
               var displayData = "";
               this.setState({ summaryInfo: ""});
+              // Saves the symptom content into the displayData section of the app.
               for (var i = 0; i < data.length; i++) {
                 console.log("length = " + data.length)
                   console.log(data[i].textContent);
@@ -183,7 +225,15 @@ export default class App extends Component {
 
                   displayData = displayData.concat(data[i].textContent).concat("\n").concat("\u2022");
               }
+              // Removes final bullet point
+              displayData = displayData.slice(0, -1);
               this.setState({summaryInfo: displayData});
+
+              // Parses the symptom data title from the CDC page and saves into the textTitle section of the app
+              const symptomTitleData = doc.getElementsByClassName('cdc-page-title cdc-page-offset syndicate');
+              var titleData = "";
+              titleData = symptomTitleData[0].textContent.trim();
+              this.setState({textTitle: titleData});
               //displayData = "";
               console.log(data);
          })
@@ -249,8 +299,6 @@ const styles = StyleSheet.create({
       //  transition: opacity 0.3s ease-in-out;
       //}
       alignSelf: 'center'
-
-    
   },
     scrollView: {
     height: 50, // Set a fixed height
@@ -268,6 +316,18 @@ const styles = StyleSheet.create({
       backgroundColor: 'lightgrey',
       alignSelf: 'left',
       width: '50%'
+  },
+
+    textInput: {
+    height: 40,
+    margin: 12,
+    borderWidth: 1,
+    padding: 10,
+    backgroundColor: 'white'
+  },
+  // Condition name style
+  condition:{
+    fontSize: 25
   }
 
 
